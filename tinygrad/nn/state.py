@@ -51,10 +51,6 @@ def safe_load_metadata(t:Tensor) -> tuple[Tensor, int, dict[str, Any]]:
 def safe_load(fn:Union[Tensor, str, pathlib.Path]) -> dict[str, Tensor]:
   """
   Loads a .safetensor file from disk, returning the state_dict.
-
-  ```python
-  state_dict = nn.state.safe_load("test.safetensor")
-  ```
   """
   t, data_start, metadata = safe_load_metadata(fn)
   data = t[data_start:]
@@ -64,11 +60,6 @@ def safe_load(fn:Union[Tensor, str, pathlib.Path]) -> dict[str, Tensor]:
 def safe_save(tensors:dict[str, Tensor], fn:str, metadata:Optional[dict[str, Any]]=None):
   """
   Saves a state_dict to disk in a .safetensor file with optional metadata.
-
-  ```python
-  t = Tensor([1, 2, 3])
-  nn.state.safe_save({'t':t}, "test.safetensor")
-  ```
   """
   headers, offset = {}, 0
   if metadata: headers['__metadata__'] = metadata
@@ -88,16 +79,6 @@ def safe_save(tensors:dict[str, Tensor], fn:str, metadata:Optional[dict[str, Any
 def get_state_dict(obj, prefix:str='', tensor_type=Tensor) -> dict[str, Tensor]:
   """
   Returns a state_dict of the object, with optional prefix.
-
-  ```python exec="true" source="above" session="tensor" result="python"
-  class Net:
-    def __init__(self):
-      self.l1 = nn.Linear(4, 5)
-      self.l2 = nn.Linear(5, 6)
-
-  net = Net()
-  print(nn.state.get_state_dict(net).keys())
-  ```
   """
   if isinstance(obj, tensor_type): return {prefix.strip('.'):obj}
   if hasattr(obj, '_asdict'): return get_state_dict(obj._asdict(), prefix, tensor_type)  # namedtuple
@@ -112,32 +93,12 @@ def get_state_dict(obj, prefix:str='', tensor_type=Tensor) -> dict[str, Tensor]:
 
 def get_parameters(obj) -> list[Tensor]:
   """
-  ```python exec="true" source="above" session="tensor" result="python"
-  class Net:
-    def __init__(self):
-      self.l1 = nn.Linear(4, 5)
-      self.l2 = nn.Linear(5, 6)
-
-  net = Net()
-  print(len(nn.state.get_parameters(net)))
-  ```
   """
   return list(get_state_dict(obj).values())
 
 def load_state_dict(model, state_dict:dict[str, Tensor], strict=True, verbose=True, consume=False) -> None:
   """
   Loads a state_dict into a model.
-
-  ```python
-  class Net:
-    def __init__(self):
-      self.l1 = nn.Linear(4, 5)
-      self.l2 = nn.Linear(5, 6)
-
-  net = Net()
-  state_dict = nn.state.get_state_dict(net)
-  nn.state.load_state_dict(net, state_dict)
-  ```
   """
   start_mem_used = GlobalCounters.mem_used
   with Timing("loaded weights in ", lambda et_ns: f", {(B:=(GlobalCounters.mem_used-start_mem_used))/1e9:.2f} GB loaded at {B/et_ns:.2f} GB/s"):
@@ -161,10 +122,6 @@ def load_state_dict(model, state_dict:dict[str, Tensor], strict=True, verbose=Tr
 def tar_extract(t: Tensor) -> dict[str, Tensor]:
   """
   Extracts files from a tar archive and returns them as dictionary of names (keys) and tensors (values).
-
-  ```python
-  tensors = nn.state.tar_extract(Tensor(pathlib.Path("archive.tar")))
-  ```
   """
   with tarfile.open(fileobj=TensorIO(t), mode="r") as tar:
     return {member.name:t[member.offset_data:member.offset_data+member.size] for member in tar if member.type == tarfile.REGTYPE}
@@ -175,10 +132,6 @@ def tar_extract(t: Tensor) -> dict[str, Tensor]:
 def torch_load(t:Tensor) -> dict[str, Tensor]:
   """
   Loads a torch .pth file from disk.
-
-  ```python
-  state_dict = nn.state.torch_load("test.pth")
-  ```
   """
   offsets: dict[Union[str, int], int] = {}
   lens: dict[Union[str, int], int] = {}
@@ -293,12 +246,6 @@ def ggml_data_to_tensor(t: Tensor, n: int, ggml_type: int) -> Tensor:
 def gguf_load(tensor: Tensor) -> tuple[dict, dict[str, Tensor]]:
   """
   Loads a gguf file from a tensor.
-
-  ```python
-  fn = "Meta-Llama-3-8B-Instruct.Q4_0.gguf"
-  gguf_tensor = Tensor.empty(os.stat(fn).st_size, dtype=dtypes.uint8, device=f"disk:{fn}").to(Device.DEFAULT)
-  kv_data, state_dict = gguf_load(gguf_tensor)
-  ```
   """
   reader, kv_data, state_dict = io.BufferedReader(TensorIO(tensor), 1_000_000), {}, {}
   def read_unpack(fmt: str, n: int): return struct.unpack(fmt, reader.read(n))[0]
